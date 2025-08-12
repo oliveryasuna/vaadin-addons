@@ -1,19 +1,24 @@
+import io.gitlab.arturbosch.detekt.Detekt
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 fun prop(key: String): String = (System.getenv(key) ?: project.findProperty(key).toString())
 
 plugins {
-    id("java")
     id("idea")
-    id("com.github.ben-manes.versions").version("0.51.0")
+    id("java")
+    alias(libs.plugins.kotlin) apply false
+    alias(libs.plugins.detekt)
+    alias(libs.plugins.versions)
 }
 
 allprojects {
     group = prop("project.group")
     version = prop("project.version")
 
-    plugins.apply("com.github.ben-manes.versions")
+    plugins.apply(rootProject.libs.plugins.versions.get().pluginId)
 
     tasks {
         dependencyUpdates {
@@ -55,8 +60,8 @@ subprojects {
         plugins.apply("idea")
 
         java {
-            sourceCompatibility = JavaVersion.VERSION_21
-            targetCompatibility = JavaVersion.VERSION_21
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
         }
 
         idea {
@@ -114,7 +119,32 @@ subprojects {
                 }
 
                 reports {
-                    junitXml.outputLocation = layout.buildDirectory.dir("reports/tests/test/xml")
+                    junitXml.outputLocation = project.layout.buildDirectory.dir("reports/tests")
+                }
+            }
+        }
+    }
+
+    pluginManager.withPlugin(rootProject.libs.plugins.kotlin.get().pluginId) {
+        plugins.apply(libs.plugins.detekt.get().pluginId)
+
+        configure<KotlinJvmProjectExtension> {
+            compilerOptions {
+                jvmTarget = JvmTarget.JVM_17
+            }
+        }
+
+        detekt {
+            config.setFrom(rootProject.files("config/detekt/detekt.yml"))
+        }
+
+        tasks {
+            withType<Detekt>().configureEach {
+                reports {
+                    html {
+                        required = true
+                        outputLocation = project.layout.buildDirectory.file("reports/detekt/detekt.html")
+                    }
                 }
             }
         }

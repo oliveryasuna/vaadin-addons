@@ -11,7 +11,6 @@ plugins {
     id("java")
     alias(libs.plugins.kotlin) apply false
     alias(libs.plugins.detekt)
-    alias(libs.plugins.ktlint)
     alias(libs.plugins.versions)
 }
 
@@ -128,7 +127,6 @@ subprojects {
 
     pluginManager.withPlugin(rootProject.libs.plugins.kotlin.get().pluginId) {
         plugins.apply(libs.plugins.detekt.get().pluginId)
-        plugins.apply(libs.plugins.ktlint.get().pluginId)
 
         configure<KotlinJvmProjectExtension> {
             compilerOptions {
@@ -138,20 +136,6 @@ subprojects {
 
         detekt {
             config.setFrom(rootProject.files("config/detekt/detekt.yml"))
-        }
-
-        ktlint {
-            debug = false
-            verbose = true
-            android = false
-            outputToConsole = true
-            ignoreFailures = false
-            enableExperimentalRules = true
-
-            filter {
-                include("**/kotlin/**")
-                exclude("**/generated/**")
-            }
         }
 
         tasks {
