@@ -7,6 +7,10 @@ import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.bundling.Zip
+import java.util.jar.JarFile
+import java.util.jar.JarOutputStream
+import java.util.zip.ZipEntry
+import java.io.FileOutputStream
 
 class VaadinAddonPlugin : Plugin<Project> {
 
@@ -77,6 +81,7 @@ private class ConfigureTasks(
         }
     }
 
+    @Suppress("LongMethod")
     private fun configureJarTask(
         jarTask: TaskProvider<Jar>,
         generateMavenProperties: TaskProvider<Task>
@@ -87,8 +92,7 @@ private class ConfigureTasks(
                 m.attributes(
                     mapOf(
                         "Manifest-Version" to "1.0",
-                        // TODO: Do not hardcode version.
-                        "Created-By" to "Vaadin Addon Plugin 1.0.0",
+                        "Created-By" to "Vaadin Addon Plugin $PLUGIN_VERSION",
                         "Build-Jdk-Spec" to javaExtension.sourceCompatibility.toString(),
                         "Implementation-Vendor" to config.author.get(),
                         "Implementation-Title" to config.title.get(),
@@ -105,6 +109,60 @@ private class ConfigureTasks(
             t.into("META-INF/maven/${config.groupId.get()}/${config.artifactId.get()}") { f ->
                 f.from(project.tasks.named("generatePomFileForMavenPublication"))
                 f.rename(".*", "pom.xml")
+            }
+
+            // Generate INDEX.LIST and add to JAR
+            t.doLast {
+                val jarFile = t.archiveFile.get().asFile
+                val tempJarFile = project.layout.buildDirectory.file("tmp/temp-${jarFile.name}").get().asFile
+                tempJarFile.parentFile.mkdirs()
+                
+                // Create INDEX.LIST content
+                val indexContent = JarFile(jarFile).use { jar ->
+                    val allDirectories = mutableSetOf<String>()
+                    
+                    jar.entries().asSequence()
+                        .filterNot { it.isDirectory }
+                        .map { it.name }
+                        .filter { it.contains("/") }
+                        .forEach { path ->
+                            // Add all parent directories
+                            var currentPath = path
+                            while (currentPath.contains("/")) {
+                                currentPath = currentPath.substringBeforeLast("/")
+                                allDirectories.add(currentPath)
+                            }
+                        }
+                    
+                    val packages = allDirectories
+                        .sorted()
+                        .joinToString("\n")
+                    "JarIndex-Version: 1.0\n\n${jarFile.name}\n$packages\n"
+                }
+                
+                // Create new JAR with INDEX.LIST
+                JarOutputStream(FileOutputStream(tempJarFile)).use { newJar ->
+                    // Add INDEX.LIST first
+                    val indexEntry = ZipEntry("META-INF/INDEX.LIST")
+                    newJar.putNextEntry(indexEntry)
+                    newJar.write(indexContent.toByteArray())
+                    newJar.closeEntry()
+                    
+                    // Copy existing entries
+                    JarFile(jarFile).use { oldJar ->
+                        oldJar.entries().asSequence().forEach { entry ->
+                            if (!entry.isDirectory) {
+                                newJar.putNextEntry(ZipEntry(entry.name))
+                                oldJar.getInputStream(entry).copyTo(newJar)
+                                newJar.closeEntry()
+                            }
+                        }
+                    }
+                }
+                
+                // Replace original JAR
+                jarFile.delete()
+                tempJarFile.renameTo(jarFile)
             }
 
             // Exclude unnecessary files
@@ -170,6 +228,7 @@ private class ConfigureTasks(
         }
     }
 
+
     private fun configureVaadinZipTask(
         vaadinZipTask: TaskProvider<Zip>,
         jarTask: TaskProvider<Jar>,
@@ -190,7 +249,6 @@ private class ConfigureTasks(
             t.into("META-INF") { i ->
                 i.from(generateVaadinManifest)
             }
-            // TODO: INDEX.LIST
             t.from(config.files)
 
             t.archiveVersion.set(config.version.get())
