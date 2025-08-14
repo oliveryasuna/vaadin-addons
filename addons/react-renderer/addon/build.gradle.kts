@@ -1,51 +1,20 @@
 plugins {
     id("java-library")
-    alias(libs.plugins.vaadin)
     id("com.oliveryasuna.vaadin.addon")
 }
 
-val vaadinOptimizeBundle = providers.gradleProperty("vaadin.optimizeBundle").orNull?.toBoolean() ?: true
-
-group = "org.vaadin.addons.oliveryasuna"
-description = "A React renderer for Vaadin Flow."
-
-vaadinAddon {
-    title = "React Renderer"
-    author = "Oliver Yasuna"
-    files.from(rootProject.file("LICENSE"))
-}
-
-publishing {
-    publications {
-        create("maven", MavenPublication::class.java) {
-            groupId = project.group.toString()
-            artifactId = project.name
-            version = project.version.toString()
-
-            from(components["java"])
-
-            pom {
-                name = vaadinAddon.title
-                description = "A React renderer for Vaadin Flow."
-                url = "https://github.com/oliveryasuna/vaadin-addons"
-            }
-        }
-    }
-}
-
-vaadin {}
+//group = "org.vaadin.addons.oliveryasuna"
+description = "A React renderer for Vaadin Flow"
+projectType = ProjectType.Addon("React Renderer")
 
 dependencies {
-    implementation(platform(libs.vaadin.bom))
-
-    implementation("com.vaadin", "flow-server")
+    // Vaadin
     implementation("com.vaadin", "flow-client")
     implementation("com.vaadin", "flow-data")
     implementation("com.vaadin", "vaadin-renderer-flow")
 }
 
-gradle.taskGraph.whenReady {
-    vaadin {
-        optimizeBundle = vaadinOptimizeBundle
-    }
+configurations.all {
+    exclude("com.vaadin", "signals")
+    exclude("com.vaadin.servletdetector", "throw-if-servlet3")
 }

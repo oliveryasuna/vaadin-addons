@@ -19,9 +19,11 @@ dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
             // Versions
+            version("springBoot", "3.5.4")
             version("vaadin", "24.8.0")
 
             // BOMs
+            library("spring.boot.bom", "org.springframework.boot", "spring-boot-dependencies").versionRef("springBoot")
             library("vaadin.bom", "com.vaadin", "vaadin-bom").versionRef("vaadin")
             library("junit.bom", "org.junit", "junit-bom").version("5.10.0")
             library("mockito.bom", "org.mockito", "mockito-bom").version("5.12.0")
@@ -36,10 +38,8 @@ dependencyResolutionManagement {
             library("jetbrainsAnnotations", "org.jetbrains", "annotations").version("26.0.2")
 
             // Plugins
-            plugin("kotlin", "org.jetbrains.kotlin.jvm").version("2.2.0")
-            plugin("detekt", "io.gitlab.arturbosch.detekt").version("1.23.8")
             plugin("versions", "com.github.ben-manes.versions").version("0.52.0")
-            plugin("pluginPublish", "com.gradle.plugin-publish").version("1.3.1")
+            plugin("springBoot", "org.springframework.boot").versionRef("springBoot")
             plugin("vaadin", "com.vaadin").versionRef("vaadin")
         }
     }
@@ -87,3 +87,6 @@ rootProject.name = "vaadin-addons"
 
 include(":react-renderer")
 project(":react-renderer").projectDir = file("addons/react-renderer/addon")
+
+include(":react-renderer-demo")
+project(":react-renderer-demo").projectDir = file("addons/react-renderer/demo")

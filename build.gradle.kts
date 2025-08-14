@@ -1,16 +1,9 @@
-import io.gitlab.arturbosch.detekt.Detekt
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
-
-fun prop(key: String): String = (System.getenv(key) ?: project.findProperty(key).toString())
 
 plugins {
-    id("idea")
     id("java")
-    alias(libs.plugins.kotlin) apply false
-    alias(libs.plugins.detekt)
+    id("idea")
     alias(libs.plugins.versions)
 }
 
@@ -56,6 +49,7 @@ allprojects {
 }
 
 subprojects {
+    // Java conventions
     pluginManager.withPlugin("java") {
         plugins.apply("idea")
 
@@ -125,28 +119,14 @@ subprojects {
         }
     }
 
-    pluginManager.withPlugin(rootProject.libs.plugins.kotlin.get().pluginId) {
-        plugins.apply(libs.plugins.detekt.get().pluginId)
-
-        configure<KotlinJvmProjectExtension> {
-            compilerOptions {
-                jvmTarget = JvmTarget.JVM_17
-            }
-        }
-
-        detekt {
-            config.setFrom(rootProject.files("config/detekt/detekt.yml"))
-        }
-
-        tasks {
-            withType<Detekt>().configureEach {
-                reports {
-                    html {
-                        required = true
-                        outputLocation = project.layout.buildDirectory.file("reports/detekt/detekt.html")
-                    }
-                }
-            }
+    // Vaadin addon conventions
+    pluginManager.withPlugin("com.oliveryasuna.vaadin.addon") {
+        group = "org.vaadin.addons.oliveryasuna"
+    }
+    afterEvaluate {
+        withProjectType<ProjectType.Addon> {
+            // Add Vaadin BOM.
+            dependencies.add(configurations.implementation.name, project.dependencies.platform(libs.vaadin.bom))
         }
     }
 }

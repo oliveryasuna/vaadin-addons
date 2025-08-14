@@ -28,7 +28,14 @@ _window.Vaadin.setReactRenderer = (
                     if(itemKey === undefined) {
                         return;
                     }
-                    returnChannel(clientCallable, itemKey, (args[0] instanceof Event ? [] : [...args]));
+
+                    // Filter out all Event-like objects to prevent JSON
+                    // serialization issues with circular references
+                    const filteredArgs: any[] = args.filter(arg =>
+                        !(arg instanceof Event) && 
+                        !(arg && typeof arg === 'object' && arg.nativeEvent !== undefined) // SyntheticEvent
+                    );
+                    returnChannel(clientCallable, itemKey, filteredArgs);
                 }
             }),
             ({} as Record<string, ((...args: any[]) => void)>)
@@ -124,13 +131,13 @@ _window.Vaadin.unsetReactRenderer = (component: Component, rendererName: string,
 
     // Clean up React root before removing renderer
     const elements: NodeListOf<Element> = component.querySelectorAll(`[data-renderer-id="${rendererId}"]`);
-    for(const element of elements) {
+    elements.forEach((element: Element): void => {
         if(!('__reactRoot' in element)) {
-            continue;
+            return;
         }
         (element.__reactRoot as any).unmount();
         delete element.__reactRoot;
-    }
+    });
 
     component[rendererName] = undefined;
 };
